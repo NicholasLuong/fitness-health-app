@@ -9,7 +9,7 @@ import type { Exercise, SetLog, WorkoutLog, WorkoutTemplate } from '../domain/ty
 import { useToast } from '../components/toast-context'
 import { Button, Card, Chip, Modal } from '../components/ui'
 
-type WorkoutStage = 'choose' | 'preview' | 'warmup' | 'exercise'
+type WorkoutStage = 'choose' | 'warmup' | 'exercise'
 const templateOrder: Record<string, number> = { 'template-full-body': 0, 'template-machine-only': 1, 'template-band-only': 2 }
 
 function formatElapsed(seconds: number) {
@@ -79,11 +79,11 @@ export function WorkoutPage() {
   const templates = useLiveQuery(async () => (await db.workoutTemplates.toArray()).filter((item) => item.active).sort((a, b) => (templateOrder[a.id] ?? 99) - (templateOrder[b.id] ?? 99)), [])
   const exercises = useLiveQuery(() => db.exercises.toArray(), [])
   const workoutLogs = useLiveQuery(() => db.workoutLogs.toArray(), [])
-  const activeLog = workoutLogs?.find((log) => log.planSessionId === sessionId && log.status === 'in_progress')
+  const [cancelledLogId, setCancelledLogId] = useState<string | null>(null)
+  const activeLog = workoutLogs?.find((log) => log.planSessionId === sessionId && log.status === 'in_progress' && log.id !== cancelledLogId)
   const setLogsQuery = useLiveQuery<SetLog[]>(() => activeLog ? db.setLogs.where('workoutLogId').equals(activeLog.id).toArray() : Promise.resolve([] as SetLog[]), [activeLog?.id])
   const allSetLogs = useLiveQuery(() => db.setLogs.toArray(), [])
   const [stage, setStage] = useState<WorkoutStage>('choose')
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null)
   const [index, setIndex] = useState(0)
   const [substituteOpen, setSubstituteOpen] = useState(false)
   const [planOpen, setPlanOpen] = useState(false)
@@ -92,7 +92,7 @@ export function WorkoutPage() {
   const resumedLog = useRef<string | null>(null)
 
   const setLogs = setLogsQuery ?? []
-  const selectedId = activeLog?.templateId ?? selectedTemplateId ?? session?.workoutTemplateId ?? null
+  const selectedId = activeLog?.templateId ?? session?.workoutTemplateId ?? null
   const template = templates?.find((item) => item.id === selectedId)
   const plannedExercises = useMemo(() => template?.exerciseDefinitions.map((id) => exercises?.find((exercise) => exercise.id === id)).filter(Boolean) as Exercise[] ?? [], [template, exercises])
   const reducedVolume = usesReducedStrengthVolume(session?.notes)
@@ -100,7 +100,6 @@ export function WorkoutPage() {
   useEffect(() => {
     if (!activeLog || setLogsQuery === undefined || resumedLog.current === activeLog.id) return
     resumedLog.current = activeLog.id
-    setSelectedTemplateId(activeLog.templateId)
     if (setLogs.length) {
       const next = plannedExercises.findIndex((exercise) => !exerciseIsComplete(exercise, setLogs, reducedVolume))
       setIndex(next >= 0 ? next : 0)
@@ -131,19 +130,33 @@ export function WorkoutPage() {
   if (!session) return <main className="page"><h1>Workout not found</h1><Button onClick={() => navigate('/plan')}>Back to plan</Button></main>
   if (session.status === 'completed') return <main className="page"><h1>Workout complete</h1><p>This session is already safely in your history.</p><Button onClick={() => navigate('/progress')}>See progress</Button></main>
 
-  const chooseTemplate = (templateId: string) => {
-    setSelectedTemplateId(templateId)
-    setStage('preview')
+  const startWorkout = async (templateId: string) => {
+    await db.transaction('rw', db.workoutLogs, async () => {
+      const found = await db.workoutLogs.where('planSessionId').equals(session.id).filter((log) => log.status === 'in_progress').first()
+      if (!found) await db.workoutLogs.add({ id: crypto.randomUUID(), planSessionId: session.id, templateId, startedAt: new Date().toISOString(), completedAt: null, status: 'in_progress', notes: null })
+    })
+    setCancelledLogId(null)
+    setStage('warmup')
     window.scrollTo(0, 0)
   }
 
-  const startWorkout = async () => {
-    if (!template) return
-    await db.transaction('rw', db.workoutLogs, async () => {
-      const found = await db.workoutLogs.where('planSessionId').equals(session.id).filter((log) => log.status === 'in_progress').first()
-      if (!found) await db.workoutLogs.add({ id: crypto.randomUUID(), planSessionId: session.id, templateId: template.id, startedAt: new Date().toISOString(), completedAt: null, status: 'in_progress', notes: null })
-    })
-    setStage('warmup')
+  const cancelWorkout = async () => {
+    if (!activeLog) {
+      setStage('choose')
+      return
+    }
+    if (!window.confirm('Cancel this workout and choose another? This draft will be abandoned and will not count as a completed workout.')) return
+    const cancelledAt = new Date().toISOString()
+    await db.workoutLogs.update(activeLog.id, { status: 'abandoned', completedAt: cancelledAt })
+    setCancelledLogId(activeLog.id)
+    resumedLog.current = null
+    setIndex(0)
+    setPerformedIds({})
+    setElapsed(0)
+    setPlanOpen(false)
+    setSubstituteOpen(false)
+    setStage('choose')
+    notify('Workout cancelled. Choose another setup.')
     window.scrollTo(0, 0)
   }
 
@@ -151,7 +164,7 @@ export function WorkoutPage() {
     <div className="workout-top"><button className="icon-button" aria-label="Close workout" onClick={() => navigate('/today')}><X /></button><Chip tone="neutral">Not started</Chip></div>
     <p className="eyebrow">Today’s strength</p>
     <h1 className="page-title">Choose your setup.</h1>
-    <p className="page-intro">The movement balance stays consistent. Pick the equipment that makes today easiest to complete.</p>
+    <p className="page-intro">Each card is the full plan. Pick the equipment that makes today easiest to complete, then begin the warm-up.</p>
     <div className="workout-template-rail">
       {templates.map((item) => {
         const itemExercises = item.exerciseDefinitions.map((id) => exercises.find((exercise) => exercise.id === id)).filter(Boolean) as Exercise[]
@@ -159,29 +172,18 @@ export function WorkoutPage() {
           <div className="template-card-top"><Chip tone={item.id === session.workoutTemplateId ? 'green' : 'neutral'}>{item.id === session.workoutTemplateId ? 'Default' : item.equipment}</Chip><Sparkles size={18} /></div>
           <h2>{item.name}</h2>
           <p>{item.description}</p>
-          <ul>{itemExercises.map((exercise) => <li key={exercise.id}>{exercise.name}</li>)}</ul>
-          <Button style={{ width: '100%' }} onClick={() => chooseTemplate(item.id)}>Preview this workout <ChevronRight size={16} style={{ display: 'inline', marginLeft: 4 }} /></Button>
+          <ol>{itemExercises.map((exercise, itemIndex) => <li key={exercise.id}><span>{itemIndex + 1}</span><div><strong>{exercise.name}</strong><small>{prescribedSets(exercise, reducedVolume)} sets · {exercise.repMin}–{exercise.repMax} reps</small></div></li>)}</ol>
+          <Button style={{ width: '100%' }} onClick={() => startWorkout(item.id)}>Start this workout <ChevronRight size={16} style={{ display: 'inline', marginLeft: 4 }} /></Button>
         </Card>
       })}
     </div>
     <p className="subtle template-safety">All three cover lower body, pushing, and pulling. Band exercises require a secure, undamaged anchor.</p>
   </main>
 
-  if (!activeLog && stage === 'preview' && template) return <main className="page workout-page">
-    <div className="workout-top"><button className="icon-button" aria-label="Choose another workout" onClick={() => setStage('choose')}><ChevronLeft /></button><Chip tone="neutral">Preview</Chip></div>
-    <p className="eyebrow">{template.equipment}</p>
-    <h1 className="page-title">{template.name}</h1>
-    <p className="page-intro">Review the whole session before the timer or workout log begins.</p>
-    <Card className="workout-plan-card"><div className="plan-card-heading"><div><span className="eyebrow">Main workout</span><h2>Six movements</h2></div><Chip tone="green">About 45 min</Chip></div><TemplateExerciseList template={template} exercises={exercises} reducedVolume={reducedVolume} /></Card>
-    <Card className="warmup-preview-card"><span className="eyebrow">Before the work sets</span><h2>Dynamic warm-up</h2><p className="subtle">About 6–8 minutes, followed by 1–2 light practice sets before the first challenging lower- and upper-body exercise.</p></Card>
-    <Button style={{ width: '100%', marginTop: 16 }} onClick={startWorkout}>Start warm-up</Button>
-    <Button style={{ width: '100%', marginTop: 8 }} variant="ghost" onClick={() => setStage('choose')}>Choose another template</Button>
-  </main>
-
   if (!template || !activeLog) return <div className="loading"><div className="loading-mark"><Dumbbell /></div></div>
 
   if (stage === 'warmup') return <main className="page workout-page">
-    <div className="workout-top"><button className="icon-button" aria-label="Close workout" onClick={() => navigate('/today')}><X /></button><div className="workout-top-actions"><button className="link-button" onClick={() => setPlanOpen(true)}><Eye size={14} /> Plan</button><Chip tone="green"><Clock3 size={12} style={{ marginRight: 4 }} />{formatElapsed(elapsed)}</Chip></div></div>
+    <div className="workout-top"><button className="icon-button" aria-label="Cancel workout and choose another" onClick={cancelWorkout}><X /></button><div className="workout-top-actions"><button className="link-button" onClick={() => setPlanOpen(true)}><Eye size={14} /> Plan</button><Chip tone="green"><Clock3 size={12} style={{ marginRight: 4 }} />{formatElapsed(elapsed)}</Chip></div></div>
     <p className="eyebrow">6–8 minute dynamic warm-up</p><h1 className="page-title">Get ready,<br />not exhausted.</h1>
     <p className="page-intro">Move through a comfortable range without long holds. Skip or adjust anything painful; this should raise temperature and rehearse today’s patterns, not create fatigue.</p>
     <Card><ol className="warmup-list">{template.warmupSteps.map((step) => <li key={step}>{step}</li>)}</ol></Card>
@@ -212,7 +214,7 @@ export function WorkoutPage() {
   const substituteOptions = planned.substituteExerciseIds.map((id) => exercises.find((exercise) => exercise.id === id)).filter(Boolean) as Exercise[]
 
   return <main className="page workout-page">
-    <div className="workout-top"><button className="icon-button" aria-label="Close and preserve workout draft" onClick={() => navigate('/today')}><X /></button><div className="workout-top-actions"><button className="link-button" onClick={() => setPlanOpen(true)}><Eye size={14} /> Plan</button><Chip tone="green"><Clock3 size={12} style={{ marginRight: 4 }} />{formatElapsed(elapsed)}</Chip></div></div>
+    <div className="workout-top"><button className="icon-button" aria-label="Cancel workout and choose another" onClick={cancelWorkout}><X /></button><div className="workout-top-actions"><button className="link-button" onClick={() => setPlanOpen(true)}><Eye size={14} /> Plan</button><Chip tone="green"><Clock3 size={12} style={{ marginRight: 4 }} />{formatElapsed(elapsed)}</Chip></div></div>
     <div className="exercise-progress">{plannedExercises.map((exercise) => <span key={exercise.id} className={exerciseIsComplete(exercise, setLogs, reducedVolume) ? 'done' : ''} />)}</div>
     <div className="exercise-map" aria-label="Jump to exercise">
       {plannedExercises.map((exercise, itemIndex) => {

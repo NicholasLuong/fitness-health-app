@@ -289,7 +289,7 @@ The plan should fit approximately 45 minutes. The completion requirement is the 
 
 ### 9.2 Dynamic warm-up
 
-After template selection and full-session preview, display a 6–8 minute dynamic sequence:
+After selecting a template card that contains the full-session preview, display a 6–8 minute dynamic sequence:
 
 1. Easy bike or brisk walk — 3 minutes
 2. Bodyweight squat to a bench — 8 controlled repetitions
@@ -597,14 +597,15 @@ On a rest day, the primary card should say the next planned session and may elev
 
 - Keep the screen awake when supported.
 - Show elapsed time as optional context, never a completion requirement.
-- Before starting the timer or log, show horizontally browsable cards for the default, machine-only, and band-only templates.
-- Show a complete exercise/set/rep preview after template selection and before the warm-up.
-- Warm-up follows the preview and remains reviewable.
+- Before starting the timer or log, show horizontally browsable cards for the default, machine-only, and band-only templates; each card is the complete exercise/set/rep preview.
+- Selecting a card starts that template and proceeds directly to its warm-up without a duplicate preview screen.
+- Warm-up remains reviewable.
 - Show one exercise group at a time with last performance and suggested load.
 - Show a directly tappable exercise map; Next, Back, and direct selection work even when the current exercise is incomplete.
 - Make set entry large and thumb-friendly.
 - Provide Substitute at exercise level.
 - Preserve partial work automatically.
+- Treat X as an intentional cancellation: confirm, abandon the active draft so it does not count, and return to fresh template choices. Unexpected app closes still resume the draft.
 - Finish Workout summarizes exercises, sets, and any new progression milestones.
 
 ### 12.4 Kitchen screen
