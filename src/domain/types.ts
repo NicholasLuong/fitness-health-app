@@ -15,7 +15,7 @@ export interface PlanProgram {
 
 export interface PlanSession {
   id: string
-  programId: string
+  programId: string | null
   type: PlanSessionType
   originalDate: ISODate
   scheduledDate: ISODate

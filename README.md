@@ -1,12 +1,12 @@
 # Steady — Fitness Health PWA
 
-Steady is a private, local-first PWA for executing the approved September 7–December 13, 2026 half-marathon and full-body strength plan, cooking more home meals, and using fresh groceries without calorie counting or excessive data entry.
+Steady is a private, local-first PWA for executing the approved September 7–December 13, 2026 half-marathon plan, maintaining an ongoing full-body strength rhythm, cooking more home meals, and using fresh groceries without calorie counting or excessive data entry.
 
 The complete product requirements and implementation handoff remain in [DESIGN.md](./DESIGN.md).
 
 ## Included
 
-- Exact 14-week running and strength plan, flexible within-week rescheduling, waiting/skipped states, and honest adherence denominators
+- Exact 14-week running plan plus perpetual twice-weekly strength scheduling, flexible within-week rescheduling, waiting/skipped states, and honest adherence denominators
 - One-field run completion plus default, machine-only, and resistance-band strength templates with full previews on the chooser, direct-to-warm-up starts, free exercise ordering, recoverable drafts, and explicit cancellation
 - Deterministic double progression based on completed set history
 - One-tap, time-aware Breakfast/Work Lunch/Dinner tracking alongside a batch-entry Fresh List, Use Soon actions, Saved Dishes, local matching, and manual ChatGPT prompt handoff
@@ -14,7 +14,7 @@ The complete product requirements and implementation handoff remain in [DESIGN.m
 - IndexedDB persistence, versioned Zod-validated backup/restore, offline app shell, install manifest, and update prompt
 - GitHub Pages deployment workflow that runs tests and a production build first
 
-Calendar/ICS reminders, receipt-text parsing, and post-race plan creation remain in the design’s intentionally deferred enhancement phase.
+Calendar/ICS reminders, receipt-text parsing, and a future post-race running plan remain in the design’s intentionally deferred enhancement phase.
 
 ## Development
 

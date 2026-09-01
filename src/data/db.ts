@@ -1,5 +1,6 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { defaultMealGoals, defaultSettings, exercises, program, workoutTemplates, createSeedSessions, SCHEMA_VERSION } from '../domain/seed'
+import { defaultMealGoals, defaultSettings, exercises, program, workoutTemplates, createRaceSessions, createStrengthSessions, SCHEMA_VERSION, STRENGTH_START_DATE } from '../domain/seed'
+import { addCalendarDays, mondayOf, toISODate } from '../domain/dates'
 import { inferredMealType, localMealDate } from '../domain/meals'
 import type {
   AppSettings, Dish, FreshItem, MealGoal, MealLog, Measurement, PlanProgram, PlanSession,
@@ -53,12 +54,25 @@ export class FitnessDatabase extends Dexie {
 
 export const db = new FitnessDatabase()
 
+export async function ensureStrengthSessions(startDate: string, endDate: string, database: FitnessDatabase = db): Promise<void> {
+  const generated = createStrengthSessions(startDate, endDate)
+  if (!generated.length) return
+  const existing = await database.planSessions.bulkGet(generated.map((session) => session.id))
+  const missing = generated.filter((_, index) => !existing[index])
+  if (missing.length) await database.planSessions.bulkAdd(missing)
+}
+
 export async function ensureSeeded(database: FitnessDatabase = db): Promise<void> {
   await database.transaction('rw', [database.planPrograms, database.planSessions, database.workoutTemplates, database.exercises, database.mealGoals, database.settings], async () => {
     if (!(await database.planPrograms.get(program.id))) await database.planPrograms.add(program)
     if ((await database.planSessions.where('programId').equals(program.id).count()) === 0) {
-      await database.planSessions.bulkAdd(createSeedSessions())
+      await database.planSessions.bulkAdd(createRaceSessions())
     }
+    await database.planSessions.where('type').equals('strength').modify((session) => { session.programId = null })
+    const today = toISODate(new Date())
+    const currentMonday = today < STRENGTH_START_DATE ? STRENGTH_START_DATE : toISODate(mondayOf(today))
+    const windowStart = today < STRENGTH_START_DATE ? STRENGTH_START_DATE : addCalendarDays(currentMonday, -42)
+    await ensureStrengthSessions(windowStart, addCalendarDays(currentMonday, 364), database)
     await database.workoutTemplates.bulkPut(workoutTemplates)
     await database.exercises.bulkPut(exercises)
     if ((await database.mealGoals.count()) === 0) await database.mealGoals.bulkAdd(defaultMealGoals)

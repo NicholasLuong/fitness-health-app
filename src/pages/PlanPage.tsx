@@ -1,10 +1,11 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { addDays, differenceInCalendarWeeks, format } from 'date-fns'
+import { addDays, format } from 'date-fns'
 import { Check, ChevronLeft, ChevronRight, Clock3, Dumbbell, Footprints, RotateCcw, ShieldCheck } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
-import { db } from '../data/db'
-import { addCalendarDays, formatDay, fromISODate, mondayOf, sundayOf, toISODate } from '../domain/dates'
+import { db, ensureStrengthSessions } from '../data/db'
+import { addCalendarDays, formatDay, mondayOf, sundayOf, toISODate } from '../domain/dates'
+import { program, raceWeekNumberFor } from '../domain/seed'
 import { adjacentDemandWarning, canReschedule, statusFor } from '../domain/sessions'
 import type { PlanSession } from '../domain/types'
 import { useToast } from '../components/toast-context'
@@ -60,23 +61,24 @@ function SessionModal({ session, allSessions, editMode, onClose }: { session: Pl
 export function PlanPage() {
   const sessions = useLiveQuery(() => db.planSessions.orderBy('scheduledDate').toArray(), []) ?? []
   const today = toISODate(new Date())
-  const initialMonday = today < '2026-09-07' ? fromISODate('2026-09-07') : mondayOf(today)
-  const [weekStart, setWeekStart] = useState(toISODate(initialMonday))
+  const initialMonday = today < program.startDate ? program.startDate : toISODate(mondayOf(today))
+  const [weekStart, setWeekStart] = useState(initialMonday)
   const [selected, setSelected] = useState<PlanSession | null>(null)
   const [editMode, setEditMode] = useState(false)
   const weekEnd = addCalendarDays(weekStart, 6)
+  useEffect(() => { ensureStrengthSessions(weekStart, weekEnd).catch(() => undefined) }, [weekStart, weekEnd])
   const weekSessions = sessions.filter((session) => session.scheduledDate >= weekStart && session.scheduledDate <= weekEnd)
-  const weekNumber = differenceInCalendarWeeks(fromISODate(weekStart), fromISODate('2026-09-07'), { weekStartsOn: 1 }) + 1
+  const weekNumber = raceWeekNumberFor(weekStart)
   const days = useMemo(() => Array.from({ length: 7 }, (_, index) => addCalendarDays(weekStart, index)), [weekStart])
-  const visibleWeek = weekNumber >= 1 && weekNumber <= 14
+  const raceWeek = weekNumber !== null
 
   return <main className="page">
-    <p className="eyebrow">Fourteen-week program</p>
+    <p className="eyebrow">Race plan + ongoing strength</p>
     <h1 className="page-title">The plan</h1>
-    <p className="page-intro">Move a commitment when life shifts. The weekly workload stays clear, and missed work never stacks up.</p>
-    <Card style={{ boxShadow: 'none', marginBottom: 18 }}><div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}><ShieldCheck color="#1f5c4a" /><p className="subtle" style={{ margin: 0 }}>All regular runs are easy and conversational. Walking breaks are allowed. This is general fitness guidance, not medical advice.</p></div></Card>
+    <p className="page-intro">The half-marathon schedule stays inside its 14 weeks. Strength continues at two flexible sessions per week after race day.</p>
+    <Card style={{ boxShadow: 'none', marginBottom: 18 }}><div style={{ display: 'flex', gap: 12, alignItems: 'flex-start' }}><ShieldCheck color="#1f5c4a" /><p className="subtle" style={{ margin: 0 }}>Runs belong to the September 7–December 13 race plan. Strength is an ongoing weekly rhythm. Both can move within their week, and missed work never stacks up.</p></div></Card>
 
-    <div className="week-picker"><button className="icon-button" aria-label="Previous week" onClick={() => setWeekStart(addCalendarDays(weekStart, -7))}><ChevronLeft /></button><div><strong>{visibleWeek ? `Week ${weekNumber} · ${purposes[weekNumber - 1]}` : 'Outside the program'}</strong><span>{formatDay(weekStart, 'MMM d')} – {formatDay(weekEnd, 'MMM d, yyyy')}</span></div><button className="icon-button" aria-label="Next week" onClick={() => setWeekStart(addCalendarDays(weekStart, 7))}><ChevronRight /></button></div>
+    <div className="week-picker"><button className="icon-button" aria-label="Previous week" onClick={() => setWeekStart(addCalendarDays(weekStart, -7))}><ChevronLeft /></button><div><strong>{raceWeek ? `Race week ${weekNumber} · ${purposes[weekNumber - 1]}` : 'Ongoing strength'}</strong><span>{formatDay(weekStart, 'MMM d')} – {formatDay(weekEnd, 'MMM d, yyyy')}</span></div><button className="icon-button" aria-label="Next week" onClick={() => setWeekStart(addCalendarDays(weekStart, 7))}><ChevronRight /></button></div>
     <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 15 }}><Button className="button-small" variant={editMode ? 'primary' : 'ghost'} onClick={() => setEditMode(!editMode)}>{editMode ? 'Done editing' : 'Edit plan'}</Button></div>
 
     {days.map((day) => {
@@ -87,9 +89,9 @@ export function PlanPage() {
           <div className="date-badge">{session.type === 'strength' ? <Dumbbell size={20} style={{ margin: 'auto' }} /> : <Footprints size={20} style={{ margin: 'auto' }} />}</div>
           <div className="list-row-main"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}><Chip tone={state === 'completed' ? 'green' : state === 'waiting' ? 'yellow' : state === 'skipped' ? 'neutral' : 'coral'}>{state}</Chip>{session.originalDate !== session.scheduledDate && <Chip tone="green">Moved</Chip>}</div><strong>{session.title}</strong><p>{session.plannedDistanceMiles ? `${session.plannedDistanceMiles} miles` : session.notes?.startsWith('Taper') ? 'Reduced volume' : 'Core full-body workout'}</p></div><ChevronRight size={18} />
         </button>
-      })}</div> : <div className="list-row" style={{ opacity: .62 }}><div className="date-badge"><Clock3 size={18} style={{ margin: 'auto' }} /></div><div className="list-row-main"><strong>Open day</strong><p>No plan commitment. Rest is part of the plan.</p></div></div>}</section>
+      })}</div> : <div className="list-row" style={{ opacity: .62 }}><div className="date-badge"><Clock3 size={18} style={{ margin: 'auto' }} /></div><div className="list-row-main"><strong>Open day</strong><p>{raceWeek ? 'No plan commitment. Rest is part of the plan.' : 'No strength commitment. Move a session here if this day fits better.'}</p></div></div>}</section>
     })}
-    {!visibleWeek && <div style={{ textAlign: 'center', marginTop: 16 }}><Button variant="secondary" onClick={() => setWeekStart('2026-09-07')}><RotateCcw size={15} style={{ display: 'inline', marginRight: 6 }} />Return to week 1</Button></div>}
+    {!raceWeek && <div style={{ textAlign: 'center', marginTop: 16 }}><Button variant="secondary" onClick={() => setWeekStart(program.startDate)}><RotateCcw size={15} style={{ display: 'inline', marginRight: 6 }} />View race week 1</Button></div>}
     {selected && <SessionModal session={selected} allSessions={sessions} editMode={editMode} onClose={() => setSelected(null)} />}
   </main>
 }

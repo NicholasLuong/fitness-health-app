@@ -1,11 +1,12 @@
-import { addCalendarDays } from './dates'
+import { differenceInCalendarWeeks } from 'date-fns'
+import { addCalendarDays, fromISODate, mondayOf, toISODate } from './dates'
 import type { AppSettings, Exercise, MealGoal, PlanProgram, PlanSession, WorkoutTemplate } from './types'
 
 export const PROGRAM_ID = 'program-half-2026'
 export const TEMPLATE_ID = 'template-full-body'
 export const MACHINE_TEMPLATE_ID = 'template-machine-only'
 export const BAND_TEMPLATE_ID = 'template-band-only'
-export const SCHEMA_VERSION = 3
+export const SCHEMA_VERSION = 4
 
 const stamp = '2026-09-01T00:00:00.000Z'
 
@@ -124,37 +125,23 @@ export const workoutTemplates: WorkoutTemplate[] = [
 ]
 
 export const workoutTemplate = workoutTemplates[0]
+export const STRENGTH_START_DATE = program.startDate
 
 const weeklyRuns = [
   [3, 5], [3, 6], [3, 7], [3, 5], [3.5, 8], [3.5, 9], [3, 6],
   [4, 10], [4, 8], [4, 11], [4, 8], [4, 12], [3, 8], [2, 13.1]
 ]
 
-export function createSeedSessions(): PlanSession[] {
+export function raceWeekNumberFor(date: string): number | null {
+  const week = differenceInCalendarWeeks(mondayOf(date), fromISODate(program.startDate), { weekStartsOn: 1 }) + 1
+  return week >= 1 && week <= weeklyRuns.length ? week : null
+}
+
+export function createRaceSessions(): PlanSession[] {
   const sessions: PlanSession[] = []
   weeklyRuns.forEach(([easy, long], index) => {
     const week = index + 1
     const monday = addCalendarDays(program.startDate, index * 7)
-    const reduced = week === 13 || week === 14
-    const strengthDays = week === 14 ? [0] : [0, 3]
-    strengthDays.forEach((offset, strengthIndex) => {
-      const date = addCalendarDays(monday, offset)
-      sessions.push({
-        id: `w${week}-strength-${strengthIndex + 1}`,
-        programId: PROGRAM_ID,
-        type: 'strength',
-        originalDate: date,
-        scheduledDate: date,
-        title: week === 14 ? 'Light Full Body' : 'Full Body',
-        plannedDistanceMiles: null,
-        workoutTemplateId: TEMPLATE_ID,
-        required: true,
-        status: 'upcoming',
-        completedAt: null,
-        actualDistanceMiles: null,
-        notes: reduced ? (week === 13 ? 'Taper: one fewer set per exercise; avoid grinding reps.' : 'Race week: reduced volume at comfortable existing loads.') : null
-      })
-    })
     const easyDate = addCalendarDays(monday, 1)
     sessions.push({
       id: `w${week}-easy`, programId: PROGRAM_ID, type: 'easy_run', originalDate: easyDate,
@@ -172,4 +159,40 @@ export function createSeedSessions(): PlanSession[] {
     })
   })
   return sessions
+}
+
+export function createStrengthSessions(startDate: string, endDate: string): PlanSession[] {
+  if (endDate < STRENGTH_START_DATE) return []
+  const requestedStart = toISODate(mondayOf(startDate))
+  const firstMonday = requestedStart < STRENGTH_START_DATE ? STRENGTH_START_DATE : requestedStart
+  const lastMonday = toISODate(mondayOf(endDate))
+  const sessions: PlanSession[] = []
+  for (let monday = firstMonday; monday <= lastMonday; monday = addCalendarDays(monday, 7)) {
+    const raceWeek = raceWeekNumberFor(monday)
+    const strengthDays = raceWeek === 14 ? [0] : [0, 3]
+    strengthDays.forEach((offset, strengthIndex) => {
+      const date = addCalendarDays(monday, offset)
+      sessions.push({
+        id: raceWeek ? `w${raceWeek}-strength-${strengthIndex + 1}` : `strength-${monday}-${strengthIndex + 1}`,
+        programId: null,
+        type: 'strength',
+        originalDate: date,
+        scheduledDate: date,
+        title: raceWeek === 14 ? 'Light Full Body' : 'Full Body',
+        plannedDistanceMiles: null,
+        workoutTemplateId: TEMPLATE_ID,
+        required: true,
+        status: 'upcoming',
+        completedAt: null,
+        actualDistanceMiles: null,
+        notes: raceWeek === 13 ? 'Taper: one fewer set per exercise; avoid grinding reps.' : raceWeek === 14 ? 'Race week: reduced volume at comfortable existing loads.' : null
+      })
+    })
+  }
+  return sessions
+}
+
+export function createSeedSessions(): PlanSession[] {
+  return [...createRaceSessions(), ...createStrengthSessions(program.startDate, program.endDate)]
+    .sort((a, b) => a.scheduledDate.localeCompare(b.scheduledDate) || a.id.localeCompare(b.id))
 }

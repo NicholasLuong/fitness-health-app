@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSeedSessions, exercises, workoutTemplates } from './seed'
+import { createSeedSessions, createStrengthSessions, exercises, PROGRAM_ID, workoutTemplates } from './seed'
 
 describe('approved training seed', () => {
   it('seeds all exact plan dates and distances', () => {
@@ -15,6 +15,13 @@ describe('approved training seed', () => {
     const sessions = createSeedSessions()
     expect(sessions.filter((session) => session.originalDate >= '2026-11-30' && session.originalDate <= '2026-12-06' && session.type === 'strength')).toHaveLength(2)
     expect(sessions.filter((session) => session.originalDate >= '2026-12-07' && session.type === 'strength').map((session) => session.originalDate)).toEqual(['2026-12-07'])
+  })
+
+  it('keeps strength independent and continuing after the race plan', () => {
+    const sessions = createSeedSessions()
+    expect(sessions.filter((session) => session.type === 'strength').every((session) => session.programId === null)).toBe(true)
+    expect(sessions.filter((session) => session.type !== 'strength').every((session) => session.programId === PROGRAM_ID)).toBe(true)
+    expect(createStrengthSessions('2026-12-14', '2026-12-27').map((session) => session.scheduledDate)).toEqual(['2026-12-14', '2026-12-17', '2026-12-21', '2026-12-24'])
   })
 
   it('offers balanced default, machine, and band workout templates', () => {

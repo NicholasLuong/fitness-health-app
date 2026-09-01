@@ -1,10 +1,12 @@
 import { useMemo, useState } from 'react'
 import { useLiveQuery } from 'dexie-react-hooks'
+import { differenceInCalendarWeeks } from 'date-fns'
 import { BarChart3, Dumbbell, Footprints, Plus, Salad, Scale, TrendingUp } from 'lucide-react'
 import { db } from '../data/db'
-import { addCalendarDays, formatDay, toISODate } from '../domain/dates'
+import { addCalendarDays, formatDay, mondayOf, toISODate } from '../domain/dates'
 import { adherenceForWeek, sessionsForWeek } from '../domain/sessions'
 import { formatExerciseLoad } from '../domain/progression'
+import { program } from '../domain/seed'
 import type { Measurement } from '../domain/types'
 import { Button, Card, Chip, EmptyState, ProgressBar, SectionHeader } from '../components/ui'
 import { MeasurementModal } from '../components/ActionModals'
@@ -37,9 +39,10 @@ export function ProgressPage() {
   const today = toISODate(new Date())
   if (!settings) return null
 
-  const currentWeekIndex = Math.max(0, Math.min(13, Math.floor((new Date(`${today}T12:00:00`).getTime() - new Date('2026-09-07T12:00:00').getTime()) / (7 * 86_400_000))))
-  const firstWeek = Math.max(0, currentWeekIndex - 5)
-  const weekStarts = Array.from({ length: Math.min(6, 14 - firstWeek) }, (_, index) => addCalendarDays('2026-09-07', (firstWeek + index) * 7))
+  const currentMonday = today < program.startDate ? program.startDate : toISODate(mondayOf(today))
+  const weeksSinceRacePlanStart = differenceInCalendarWeeks(mondayOf(currentMonday), mondayOf(program.startDate), { weekStartsOn: 1 })
+  const firstWeek = weeksSinceRacePlanStart < 5 ? program.startDate : addCalendarDays(currentMonday, -35)
+  const weekStarts = Array.from({ length: 6 }, (_, index) => addCalendarDays(firstWeek, index * 7))
   const weeks = weekStarts.map((start) => {
     const stats = adherenceForWeek(sessions, meals, start, settings.homeMealWeeklyGoal, mealGoals)
     const runs = sessionsForWeek(sessions, start).filter((session) => ['easy_run', 'long_run', 'race'].includes(session.type))

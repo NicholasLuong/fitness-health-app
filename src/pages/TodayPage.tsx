@@ -7,6 +7,7 @@ import { db } from '../data/db'
 import { formatDay, toISODate } from '../domain/dates'
 import { effectiveFreshState, matchDishes } from '../domain/kitchen'
 import { createHomeMealLog, inferredMealType, localMealDate, mealGoalSummary, mealTypeLabels } from '../domain/meals'
+import { program } from '../domain/seed'
 import { adherenceForWeek, reconcileSessions, statusFor } from '../domain/sessions'
 import type { PlanSession } from '../domain/types'
 import { useToast } from '../components/toast-context'
@@ -42,7 +43,8 @@ export function TodayPage() {
   const todaySession = activeSessions.find((session) => session.scheduledDate === today)
   const nextSession = activeSessions.find((session) => session.scheduledDate > today)
   const primary = waiting ?? todaySession ?? nextSession
-  const statsDate = today < '2026-09-07' ? '2026-09-07' : today
+  const nextStrength = activeSessions.find((session) => session.type === 'strength')
+  const statsDate = today < program.startDate ? program.startDate : today
   const adherence = settings ? adherenceForWeek(sessions, meals, statsDate, settings.homeMealWeeklyGoal, mealGoals) : null
   const mealCommitments = mealGoalSummary(mealGoals, meals, today)
   const matches = useMemo(() => matchDishes(dishes, fresh), [dishes, fresh])
@@ -67,7 +69,7 @@ export function TodayPage() {
   return <main className="page">
     <p className="eyebrow">{format(new Date(), 'EEEE · MMMM d')}</p>
     <h1 className="page-title">What’s next?</h1>
-    <p className="page-intro">One useful choice at a time. Your whole week can move without becoming a failure.</p>
+    <p className="page-intro">Running has a finish line. Strength keeps a steady weekly rhythm. One useful choice at a time.</p>
 
     {waiting && <Card className="waiting-card"><Chip tone="yellow">Waiting</Chip><h3 style={{ margin: '10px 0 5px' }}>{waiting.title} needs a new day</h3><p className="subtle">Originally planned for {formatDay(waiting.originalDate)}. Move it within this week or intentionally skip it.</p><Button className="button-small" variant="secondary" onClick={() => navigate('/plan')}>Reschedule <CalendarClock size={15} style={{ display: 'inline', marginLeft: 5 }} /></Button></Card>}
 
@@ -76,7 +78,7 @@ export function TodayPage() {
       <h2>{primary.title}</h2>
       <p>{sessionDescription(primary)}</p>
       <div className="hero-actions"><Button onClick={() => startPrimary(primary)}>{primary.type === 'strength' ? 'Start workout' : primary.type === 'race' ? 'Log race' : 'Log run'} <ArrowRight size={16} style={{ display: 'inline', marginLeft: 5 }} /></Button>{primary.scheduledDate !== today && <Button variant="secondary" onClick={() => navigate('/plan')}>View the week</Button>}</div>
-    </Card> : <Card className="hero-card"><p className="eyebrow">Plan complete</p><h2>You made it through the plan.</h2><p>Take the win. Your next phase should be an intentional choice, not something the app invents.</p><div className="hero-actions"><Button onClick={() => navigate('/progress')}>See your progress</Button></div></Card>}
+    </Card> : <Card className="hero-card"><p className="eyebrow">Week clear</p><h2>Nothing is waiting.</h2><p>Your running plan may be complete, while the ongoing strength rhythm remains available from Plan.</p><div className="hero-actions"><Button onClick={() => navigate('/plan')}>View the plan</Button></div></Card>}
 
     <SectionHeader eyebrow={statsDate === today ? 'This week' : 'First plan week'} title="Keep the rhythm" />
     <div className="stats-grid">
@@ -92,7 +94,7 @@ export function TodayPage() {
 
     <SectionHeader eyebrow="Quick actions" title="Log it and move on" />
     <div className="quick-grid">
-      <button className="quick-action" onClick={() => primary?.type === 'strength' ? navigate(`/workout/${primary.id}`) : navigate('/plan')}><Dumbbell size={22} />Start workout</button>
+      <button className="quick-action" onClick={() => nextStrength ? navigate(`/workout/${nextStrength.id}`) : notify('No strength session is waiting this week.')}><Dumbbell size={22} />Start workout</button>
       <button className="quick-action" onClick={() => { const nextRun = activeSessions.find((session) => session.type !== 'strength'); nextRun ? setRun(nextRun) : notify('No run is waiting to be logged.') }}><Footprints size={22} />Log run</button>
       <button className="quick-action" onClick={quickMeal}><Salad size={22} />{quickMealType === 'other' ? 'Log home meal' : `Log ${mealTypeLabels[quickMealType].toLowerCase()}`}</button>
       <button className="quick-action" onClick={() => setAddFresh(true)}><ShoppingBasket size={22} />Add groceries</button>

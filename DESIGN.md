@@ -11,7 +11,7 @@ Fitness Health PWA is a private, local-first, mobile-oriented progressive web ap
 
 The product has two connected jobs:
 
-1. Hold the user accountable to a weekly half-marathon and full-body strength plan.
+1. Hold the user accountable to a fixed 14-week half-marathon plan and a perpetual full-body strength rhythm.
 2. Make home cooking easier by tracking home-prepared meals, saved dishes, and only the fresh groceries that need to be used.
 
 This is deliberately not a comprehensive fitness, nutrition, pantry, or calorie tracker. Its central design principle is reducing thought and data-entry burden. The app should make the next good action obvious, let the user record it quickly, and show whether the week is on track.
@@ -35,7 +35,7 @@ No account, server, database, Strava connection, OpenAI API, or other third-part
 The product should help the user:
 
 - Finish the December 13 half marathon comfortably, or simply finish it.
-- Complete the prescribed runs and gym sessions each week.
+- Complete the prescribed race-plan runs and ongoing gym sessions each week.
 - Build stronger legs and a balanced base through two simple full-body workouts per week.
 - Progress resistance exercises without having to invent the next workout.
 - Cook more home-prepared meals, including eating leftovers.
@@ -52,7 +52,7 @@ Only collect data that produces a useful next action or meaningful progress sign
 
 ### 3.2 Plan once, execute weekly
 
-The initial running and gym program is built in advance. The normal experience is following it, not recreating a plan every week.
+The 14-week running program is built in advance. The normal gym experience is a repeating twice-weekly rhythm that continues automatically rather than requiring a new post-race plan.
 
 ### 3.3 Commitments are flexible; workload is not
 
@@ -284,6 +284,8 @@ Repeat the same core full-body movement structure twice weekly. The user may cho
 - Predictable duration
 - Less disruption when equipment is occupied
 - Each major movement pattern trained twice weekly
+
+Strength is not bounded by the half-marathon program. It starts with the training plan, reduces volume during taper and race week, then returns to two flexible sessions every week indefinitely. Strength sessions are stored independently from the race program and generated on a rolling basis or whenever a future week is viewed.
 
 The plan should fit approximately 45 minutes. The completion requirement is the core workout, not optional accessories.
 
@@ -588,6 +590,7 @@ On a rest day, the primary card should say the next planned session and may elev
 
 ### 12.2 Weekly Plan screen
 
+- Present the fixed September 7–December 13 running program and the ongoing strength rhythm in the same weekly view while making their different lifecycles clear.
 - Monday–Sunday layout optimized for a phone, likely a vertical day list rather than a cramped seven-column calendar.
 - Each commitment card shows type, prescribed work, state, and scheduled date.
 - Tap a card for complete, reschedule, edit note, or skip.
@@ -655,7 +658,7 @@ Use stable UUIDs and explicit schema versions. Suggested entities follow; implem
 ### 13.2 `planSessions`
 
 - `id`
-- `programId`
+- `programId`, nullable for ongoing strength commitments that do not belong to the race program
 - `type`: easy_run, long_run, race, strength, rest
 - `originalDate`
 - `scheduledDate`
@@ -825,7 +828,7 @@ Keep onboarding short and skippable:
 2. Confirm September 7 plan start and December 13 race.
 3. Confirm default units: miles and pounds.
 4. Choose a weekly home-meal goal, suggesting five.
-5. Seed the approved running and strength program.
+5. Seed the approved 14-week running program and the ongoing twice-weekly strength rhythm.
 6. Land on Today.
 
 Do not ask for weight, waist, injuries, calorie goals, current lifts, notification permission, or a complete pantry during onboarding.
@@ -852,7 +855,7 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 
 ### Phase 2 — Fitness plan and Today
 
-- Seed exact running plan and gym template.
+- Seed the exact 14-week running plan and perpetual gym schedule.
 - Build plan-session state and rescheduling.
 - Build Today and weekly Plan views.
 - Implement simple run completion.
@@ -901,7 +904,7 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 - Calendar/ICS reminders
 - Paste-receipt-text experiment
 - Optional dish-photo refinements
-- Post-race plan editing tools
+- Post-race running-plan tools
 
 ## 20. Acceptance criteria
 
@@ -915,6 +918,7 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 ### 20.2 Fitness
 
 - The exact September 7–December 13 plan is visible by week.
+- No run is invented outside the 14-week race plan, while two strength commitments continue each week after race day.
 - A planned session can be moved within its week without being marked failed.
 - An incomplete prior-day session appears as waiting.
 - End-of-week incomplete sessions become skipped and do not roll over.
@@ -976,7 +980,7 @@ Automated tests should emphasize domain rules rather than component snapshots:
 
 ## 22. Future considerations, not commitments
 
-- A new post-race strength/running phase
+- A new post-race running phase; ongoing strength does not require a replacement phase
 - Additional strength templates only after the three equipment variants show a real usage need
 - True receipt-image parsing using a secure serverless backend and separately billed API
 - Cloud synchronization if multi-device use becomes important

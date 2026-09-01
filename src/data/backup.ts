@@ -10,7 +10,7 @@ const planProgramSchema = z.object({
   status: z.enum(['active', 'completed', 'archived']), createdAt: z.string(), updatedAt: z.string()
 })
 const planSessionSchema = z.object({
-  id: z.string(), programId: z.string(), type: z.enum(['easy_run', 'long_run', 'race', 'strength', 'rest']),
+  id: z.string(), programId: nullableString, type: z.enum(['easy_run', 'long_run', 'race', 'strength', 'rest']),
   originalDate: z.string(), scheduledDate: z.string(), title: z.string(), plannedDistanceMiles: z.number().nullable(),
   workoutTemplateId: nullableString, required: z.boolean(), status: z.enum(['upcoming', 'waiting', 'completed', 'skipped']),
   completedAt: nullableString, actualDistanceMiles: z.number().nullable(), notes: nullableString
