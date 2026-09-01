@@ -2,6 +2,7 @@ export type ISODate = string
 
 export type PlanSessionType = 'easy_run' | 'long_run' | 'race' | 'strength' | 'rest'
 export type PlanSessionStatus = 'upcoming' | 'waiting' | 'completed' | 'skipped'
+export type RunFeedback = 'comfortable' | 'challenging' | 'stopped_early'
 
 export interface PlanProgram {
   id: string
@@ -21,11 +22,14 @@ export interface PlanSession {
   scheduledDate: ISODate
   title: string
   plannedDistanceMiles: number | null
+  baselineDistanceMiles: number | null
   workoutTemplateId: string | null
   required: boolean
   status: PlanSessionStatus
   completedAt: string | null
   actualDistanceMiles: number | null
+  runFeedback: RunFeedback | null
+  adjustedFromSessionId: string | null
   notes: string | null
 }
 

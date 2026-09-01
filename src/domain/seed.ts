@@ -6,7 +6,7 @@ export const PROGRAM_ID = 'program-half-2026'
 export const TEMPLATE_ID = 'template-full-body'
 export const MACHINE_TEMPLATE_ID = 'template-machine-only'
 export const BAND_TEMPLATE_ID = 'template-band-only'
-export const SCHEMA_VERSION = 4
+export const SCHEMA_VERSION = 5
 
 const stamp = '2026-09-01T00:00:00.000Z'
 
@@ -145,17 +145,18 @@ export function createRaceSessions(): PlanSession[] {
     const easyDate = addCalendarDays(monday, 1)
     sessions.push({
       id: `w${week}-easy`, programId: PROGRAM_ID, type: 'easy_run', originalDate: easyDate,
-      scheduledDate: easyDate, title: 'Easy run', plannedDistanceMiles: easy, workoutTemplateId: null,
-      required: true, status: 'upcoming', completedAt: null, actualDistanceMiles: null,
+      scheduledDate: easyDate, title: 'Easy run', plannedDistanceMiles: easy, baselineDistanceMiles: easy, workoutTemplateId: null,
+      required: true, status: 'upcoming', completedAt: null, actualDistanceMiles: null, runFeedback: null, adjustedFromSessionId: null,
       notes: 'Easy, conversational effort. Walking breaks are welcome.'
     })
     const longDate = addCalendarDays(monday, week === 14 ? 6 : 5)
     sessions.push({
       id: `w${week}-${week === 14 ? 'race' : 'long'}`, programId: PROGRAM_ID,
       type: week === 14 ? 'race' : 'long_run', originalDate: longDate, scheduledDate: longDate,
-      title: week === 14 ? 'Half marathon' : 'Long run', plannedDistanceMiles: long,
+      title: week === 14 ? 'Half marathon' : 'Long run', plannedDistanceMiles: long, baselineDistanceMiles: long,
       workoutTemplateId: null, required: true, status: 'upcoming', completedAt: null,
-      actualDistanceMiles: null, notes: week === 14 ? 'Race day · finish comfortably.' : 'Easy, conversational effort. Walking breaks are welcome.'
+      actualDistanceMiles: null, runFeedback: null, adjustedFromSessionId: null,
+      notes: week === 14 ? 'Race day · finish comfortably.' : 'Easy, conversational effort. Walking breaks are welcome.'
     })
   })
   return sessions
@@ -180,11 +181,14 @@ export function createStrengthSessions(startDate: string, endDate: string): Plan
         scheduledDate: date,
         title: raceWeek === 14 ? 'Light Full Body' : 'Full Body',
         plannedDistanceMiles: null,
+        baselineDistanceMiles: null,
         workoutTemplateId: TEMPLATE_ID,
         required: true,
         status: 'upcoming',
         completedAt: null,
         actualDistanceMiles: null,
+        runFeedback: null,
+        adjustedFromSessionId: null,
         notes: raceWeek === 13 ? 'Taper: one fewer set per exercise; avoid grinding reps.' : raceWeek === 14 ? 'Race week: reduced volume at comfortable existing loads.' : null
       })
     })

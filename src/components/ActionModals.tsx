@@ -3,23 +3,70 @@ import { formatISO } from 'date-fns'
 import { db } from '../data/db'
 import { createFreshItems, normalizeIngredient, parseFreshBatch } from '../domain/kitchen'
 import { createHomeMealLog, inferredMealType, localMealDate, mealGoalVersionsForWeek, mealTypeLabels, nextGoalVersion } from '../domain/meals'
+import { reviewNextLongRun, type LongRunReview } from '../domain/runAdaptation'
 import { defaultMealGoals } from '../domain/seed'
-import type { AppSettings, Dish, MealGoal, MealType, PlanSession, TrackedMealType } from '../domain/types'
+import type { AppSettings, Dish, MealGoal, MealType, PlanSession, RunFeedback, TrackedMealType } from '../domain/types'
 import { useToast } from './toast-context'
 import { Button, Field, Modal } from './ui'
 
-export function RunCompleteModal({ session, onClose }: { session: PlanSession; onClose: () => void }) {
+const feedbackOptions: Array<{ value: RunFeedback; label: string; detail: string }> = [
+  { value: 'comfortable', label: 'Comfortable', detail: 'I had more in the tank.' },
+  { value: 'challenging', label: 'Challenging but okay', detail: 'Hard, but nothing felt wrong.' },
+  { value: 'stopped_early', label: 'Had to stop early', detail: 'I could not safely or sensibly finish.' }
+]
+
+export function RunCompleteModal({ session, allSessions, onClose }: { session: PlanSession; allSessions: PlanSession[]; onClose: () => void }) {
   const [distance, setDistance] = useState(session.actualDistanceMiles ?? session.plannedDistanceMiles ?? 0)
+  const [feedback, setFeedback] = useState<RunFeedback | null>(session.runFeedback)
+  const [review, setReview] = useState<LongRunReview | null>(null)
   const { notify } = useToast()
-  const save = async () => {
-    await db.planSessions.update(session.id, { status: 'completed', actualDistanceMiles: distance, completedAt: new Date().toISOString() })
-    notify(distance === session.plannedDistanceMiles ? 'Run complete. Nicely done.' : 'Run saved. Every honest mile counts.')
+
+  const save = async (acceptAdjustment = false) => {
+    await db.transaction('rw', db.planSessions, async () => {
+      await db.planSessions.update(session.id, { status: 'completed', actualDistanceMiles: distance, runFeedback: feedback, completedAt: new Date().toISOString() })
+      if (acceptAdjustment && review?.kind === 'adjust') {
+        await db.planSessions.update(review.nextSession.id, { plannedDistanceMiles: review.suggestedDistance, adjustedFromSessionId: session.id })
+      }
+    })
+    notify(acceptAdjustment && review?.kind === 'adjust' ? `Run saved. Next long run adjusted to ${review.suggestedDistance} miles.` : review?.kind === 'buffer' ? 'Run saved. Your recovery week stays protected.' : 'Run saved. Every honest mile counts.')
     onClose()
   }
+
+  const continueToReview = () => {
+    if (!feedback) return
+    const nextReview = reviewNextLongRun(session, distance, feedback, allSessions)
+    if (nextReview.kind === 'none') {
+      setReview(nextReview)
+      void save()
+      return
+    }
+    setReview(nextReview)
+  }
+
+  if (review?.kind === 'buffer') return <Modal title="Your buffer is working" onClose={onClose}>
+    <p className="subtle">{review.message}</p>
+    <div className="adaptation-card"><strong>No catch-up miles</strong><span>The recovery week stays exactly as planned. The week after it also remains unchanged.</span></div>
+    <div className="modal-actions"><Button variant="ghost" onClick={() => setReview(null)}>Back</Button><Button onClick={() => save()}>Finish</Button></div>
+  </Modal>
+
+  if (review?.kind === 'adjust') {
+    const original = review.nextSession.plannedDistanceMiles
+    return <Modal title="Protect next week" onClose={onClose}>
+      <p className="subtle">{review.message}</p>
+      <div className="distance-comparison" aria-label={`Suggested next long run: ${review.suggestedDistance} miles instead of ${original} miles`}>
+        <div><span>Original</span><strong>{original} mi</strong></div><div className="distance-arrow">→</div><div className="suggested"><span>Suggested</span><strong>{review.suggestedDistance} mi</strong></div>
+      </div>
+      <div className="adaptation-card"><strong>Only next week changes</strong><span>Nothing stacks up, recovery weeks stay protected, and the following week returns to the original plan.</span></div>
+      {feedback === 'stopped_early' && <p className="safety-note">If pain—not ordinary effort—made you stop, pause running rather than training through it and seek appropriate medical guidance if it persists.</p>}
+      <div className="modal-actions"><Button variant="ghost" onClick={() => setReview(null)}>Back</Button><Button variant="secondary" onClick={() => save(false)}>Keep {original} mi</Button><Button onClick={() => save(true)}>Use {review.suggestedDistance} mi</Button></div>
+    </Modal>
+  }
+
   return <Modal title={`Complete ${session.title}`} onClose={onClose}>
     <p className="subtle">Planned: {session.plannedDistanceMiles} miles · Easy, conversational effort; walking is allowed.</p>
     <Field label="Actual distance" hint="A partial run still counts as completed."><input className="input" type="number" min="0" step="0.1" inputMode="decimal" autoFocus value={distance} onChange={(event) => setDistance(Number(event.target.value))} /></Field>
-    <div className="modal-actions"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button onClick={save}>Complete run</Button></div>
+    <fieldset className="effort-fieldset"><legend>How did that feel?</legend><div className="effort-options">{feedbackOptions.map((option) => <button type="button" className={feedback === option.value ? 'selected' : ''} aria-pressed={feedback === option.value} key={option.value} onClick={() => setFeedback(option.value)}><strong>{option.label}</strong><span>{option.detail}</span></button>)}</div></fieldset>
+    <div className="modal-actions"><Button variant="ghost" onClick={onClose}>Cancel</Button><Button disabled={!feedback || !Number.isFinite(distance) || distance < 0} onClick={continueToReview}>{session.type === 'long_run' ? 'Review next week' : 'Complete run'}</Button></div>
   </Modal>
 }
 

@@ -68,7 +68,12 @@ export async function ensureSeeded(database: FitnessDatabase = db): Promise<void
     if ((await database.planSessions.where('programId').equals(program.id).count()) === 0) {
       await database.planSessions.bulkAdd(createRaceSessions())
     }
-    await database.planSessions.where('type').equals('strength').modify((session) => { session.programId = null })
+    await database.planSessions.toCollection().modify((session) => {
+      if (session.type === 'strength') session.programId = null
+      session.baselineDistanceMiles ??= session.plannedDistanceMiles
+      session.runFeedback ??= null
+      session.adjustedFromSessionId ??= null
+    })
     const today = toISODate(new Date())
     const currentMonday = today < STRENGTH_START_DATE ? STRENGTH_START_DATE : toISODate(mondayOf(today))
     const windowStart = today < STRENGTH_START_DATE ? STRENGTH_START_DATE : addCalendarDays(currentMonday, -42)

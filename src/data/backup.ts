@@ -12,9 +12,17 @@ const planProgramSchema = z.object({
 const planSessionSchema = z.object({
   id: z.string(), programId: nullableString, type: z.enum(['easy_run', 'long_run', 'race', 'strength', 'rest']),
   originalDate: z.string(), scheduledDate: z.string(), title: z.string(), plannedDistanceMiles: z.number().nullable(),
+  baselineDistanceMiles: z.number().nullable().optional(),
   workoutTemplateId: nullableString, required: z.boolean(), status: z.enum(['upcoming', 'waiting', 'completed', 'skipped']),
-  completedAt: nullableString, actualDistanceMiles: z.number().nullable(), notes: nullableString
-})
+  completedAt: nullableString, actualDistanceMiles: z.number().nullable(),
+  runFeedback: z.enum(['comfortable', 'challenging', 'stopped_early']).nullable().optional(),
+  adjustedFromSessionId: nullableString.optional(), notes: nullableString
+}).transform((session) => ({
+  ...session,
+  baselineDistanceMiles: session.baselineDistanceMiles ?? session.plannedDistanceMiles,
+  runFeedback: session.runFeedback ?? null,
+  adjustedFromSessionId: session.adjustedFromSessionId ?? null
+}))
 const templateSchema = z.object({
   id: z.string(), name: z.string(), description: z.string().default('Full-body strength session'),
   equipment: z.string().default('Gym equipment'), warmupSteps: z.array(z.string()), exerciseDefinitions: z.array(z.string()),

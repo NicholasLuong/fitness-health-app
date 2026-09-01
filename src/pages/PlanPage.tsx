@@ -38,14 +38,16 @@ function SessionModal({ session, allSessions, editMode, onClose }: { session: Pl
     onClose()
   }
   const saveEdit = async () => {
-    await db.planSessions.update(session.id, { title: title.trim() || session.title, plannedDistanceMiles: session.type === 'strength' ? null : Number(distance) })
+    const plannedDistanceMiles = session.type === 'strength' ? null : Number(distance)
+    await db.planSessions.update(session.id, { title: title.trim() || session.title, plannedDistanceMiles, baselineDistanceMiles: plannedDistanceMiles, adjustedFromSessionId: null })
     notify('Plan session updated.')
     onClose()
   }
-  if (runComplete) return <RunCompleteModal session={session} onClose={onClose} />
+  if (runComplete) return <RunCompleteModal session={session} allSessions={allSessions} onClose={onClose} />
   return <Modal title={session.title} onClose={onClose}>
-    <div style={{ display: 'flex', gap: 8, marginBottom: 15 }}><Chip tone={state === 'completed' ? 'green' : state === 'waiting' ? 'yellow' : state === 'skipped' ? 'neutral' : 'coral'}>{state}</Chip>{session.scheduledDate !== session.originalDate && <Chip tone="green">Rescheduled</Chip>}</div>
+    <div style={{ display: 'flex', gap: 8, marginBottom: 15 }}><Chip tone={state === 'completed' ? 'green' : state === 'waiting' ? 'yellow' : state === 'skipped' ? 'neutral' : 'coral'}>{state}</Chip>{session.scheduledDate !== session.originalDate && <Chip tone="green">Rescheduled</Chip>}{session.adjustedFromSessionId && <Chip tone="yellow">Adaptive</Chip>}</div>
     <p className="subtle"><strong>{formatDay(session.scheduledDate, 'EEEE, MMMM d')}</strong>{session.plannedDistanceMiles ? ` · ${session.plannedDistanceMiles} miles` : ' · Full body'}<br />{session.notes}</p>
+    {session.adjustedFromSessionId && session.baselineDistanceMiles !== session.plannedDistanceMiles && <div className="notice">Temporarily adjusted from {session.baselineDistanceMiles} miles after a difficult long run. The rest of the plan is unchanged.</div>}
     {session.scheduledDate !== session.originalDate && <p className="subtle">Originally {formatDay(session.originalDate)}.</p>}
     {state === 'completed' && <div className="notice"><Check size={16} style={{ display: 'inline', marginRight: 6 }} />Completed {session.completedAt ? format(new Date(session.completedAt), "MMM d 'at' h:mm a") : ''}{session.actualDistanceMiles !== null ? ` · ${session.actualDistanceMiles} actual miles` : ''}</div>}
     {editMode && state !== 'completed' && <><div className="divider" /><p className="eyebrow">Edit plan mode</p><Field label="Title"><input className="input" value={title} onChange={(event) => setTitle(event.target.value)} /></Field>{session.type !== 'strength' && <Field label="Planned distance"><input className="input" type="number" step="0.1" min="0" value={distance} onChange={(event) => setDistance(event.target.value)} /></Field>}<Button variant="secondary" onClick={saveEdit}>Save plan change</Button></>}
@@ -87,7 +89,7 @@ export function PlanPage() {
         const state = statusFor(session, today)
         return <button key={session.id} className={`list-row ${state === 'completed' ? 'session-completed' : ''}`} style={{ width: '100%', textAlign: 'left', color: 'inherit', cursor: 'pointer' }} onClick={() => setSelected(session)}>
           <div className="date-badge">{session.type === 'strength' ? <Dumbbell size={20} style={{ margin: 'auto' }} /> : <Footprints size={20} style={{ margin: 'auto' }} />}</div>
-          <div className="list-row-main"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}><Chip tone={state === 'completed' ? 'green' : state === 'waiting' ? 'yellow' : state === 'skipped' ? 'neutral' : 'coral'}>{state}</Chip>{session.originalDate !== session.scheduledDate && <Chip tone="green">Moved</Chip>}</div><strong>{session.title}</strong><p>{session.plannedDistanceMiles ? `${session.plannedDistanceMiles} miles` : session.notes?.startsWith('Taper') ? 'Reduced volume' : 'Core full-body workout'}</p></div><ChevronRight size={18} />
+          <div className="list-row-main"><div style={{ display: 'flex', gap: 6, flexWrap: 'wrap', marginBottom: 4 }}><Chip tone={state === 'completed' ? 'green' : state === 'waiting' ? 'yellow' : state === 'skipped' ? 'neutral' : 'coral'}>{state}</Chip>{session.originalDate !== session.scheduledDate && <Chip tone="green">Moved</Chip>}{session.adjustedFromSessionId && <Chip tone="yellow">Adaptive</Chip>}</div><strong>{session.title}</strong><p>{session.plannedDistanceMiles ? `${session.plannedDistanceMiles} miles${session.adjustedFromSessionId ? ` · originally ${session.baselineDistanceMiles}` : ''}` : session.notes?.startsWith('Taper') ? 'Reduced volume' : 'Core full-body workout'}</p></div><ChevronRight size={18} />
         </button>
       })}</div> : <div className="list-row" style={{ opacity: .62 }}><div className="date-badge"><Clock3 size={18} style={{ margin: 'auto' }} /></div><div className="list-row-main"><strong>Open day</strong><p>{raceWeek ? 'No plan commitment. Rest is part of the plan.' : 'No strength commitment. Move a session here if this day fits better.'}</p></div></div>}</section>
     })}

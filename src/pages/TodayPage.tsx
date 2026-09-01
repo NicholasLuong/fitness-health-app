@@ -101,7 +101,7 @@ export function TodayPage() {
     </div>
 
     {nextSession && primary?.id !== nextSession.id && <><SectionHeader eyebrow="Coming up" title="The next commitment" /><div className="list"><div className="list-row"><div className="date-badge"><span>{formatDay(nextSession.scheduledDate, 'EEE')}</span><strong>{formatDay(nextSession.scheduledDate, 'd')}</strong></div><div className="list-row-main"><strong>{nextSession.title}</strong><p>{sessionDescription(nextSession)}</p></div><Plus size={18} /></div></div></>}
-    {run && <RunCompleteModal session={run} onClose={() => setRun(null)} />}
+    {run && <RunCompleteModal session={run} allSessions={sessions} onClose={() => setRun(null)} />}
     {addFresh && <FreshBatchModal settings={settings} onClose={() => setAddFresh(false)} />}
   </main>
 }

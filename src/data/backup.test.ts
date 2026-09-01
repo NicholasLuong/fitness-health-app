@@ -59,7 +59,7 @@ describe('versioned backups', () => {
       }
     }
     const upgraded = validateBackup(legacy)
-    expect(upgraded.schemaVersion).toBe(4)
+    expect(upgraded.schemaVersion).toBe(5)
     expect(upgraded.data.mealGoals).toHaveLength(3)
     expect(upgraded.data.mealLogs[0]).toMatchObject({ mealDate: '2026-09-08', mealType: 'work_lunch' })
     expect(upgraded.data.workoutTemplates[0]).toMatchObject({ description: 'Full-body strength session', equipment: 'Gym equipment' })
