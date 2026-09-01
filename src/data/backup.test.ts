@@ -20,6 +20,7 @@ describe('versioned backups', () => {
     expect(await target.planSessions.count()).toBe(55)
     expect(await target.mealLogs.get('meal')).toMatchObject({ leftovers: true })
     expect(await target.mealGoals.count()).toBe(3)
+    expect(await target.workoutTemplates.count()).toBe(3)
   })
 
   it('rejects future backups before any write', async () => {
@@ -39,12 +40,16 @@ describe('versioned backups', () => {
       data: {
         ...current.data,
         mealGoals: undefined,
+        workoutTemplates: current.data.workoutTemplates.map((template) => ({ id: template.id, name: template.name, warmupSteps: template.warmupSteps, exerciseDefinitions: template.exerciseDefinitions, active: template.active, createdAt: template.createdAt, updatedAt: template.updatedAt })),
+        exercises: current.data.exercises.map((exercise) => ({ id: exercise.id, name: exercise.name, movementPattern: exercise.movementPattern, repMin: exercise.repMin, repMax: exercise.repMax, targetSets: exercise.targetSets, defaultIncrementLb: exercise.defaultIncrementLb, substituteExerciseIds: exercise.substituteExerciseIds, optional: exercise.optional })),
         mealLogs: [{ id: 'legacy-meal', occurredAt: '2026-09-08T12:00:00', type: 'home_prepared', dishId: null, leftovers: true, notes: null }]
       }
     }
     const upgraded = validateBackup(legacy)
-    expect(upgraded.schemaVersion).toBe(2)
+    expect(upgraded.schemaVersion).toBe(3)
     expect(upgraded.data.mealGoals).toHaveLength(3)
     expect(upgraded.data.mealLogs[0]).toMatchObject({ mealDate: '2026-09-08', mealType: 'work_lunch' })
+    expect(upgraded.data.workoutTemplates[0]).toMatchObject({ description: 'Full-body strength session', equipment: 'Gym equipment' })
+    expect(upgraded.data.exercises[0].loadUnit).toBe('lb')
   })
 })

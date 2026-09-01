@@ -276,7 +276,7 @@ Place a short, non-repetitive note in plan information/settings rather than ever
 
 ### 9.1 Philosophy
 
-Repeat the same core full-body workout twice weekly. This is intentional:
+Repeat the same core full-body movement structure twice weekly. The user may choose the default, machine-only, or resistance-band template for each session without changing the weekly commitment. This is intentional:
 
 - Fewer decisions
 - Faster learning
@@ -287,17 +287,18 @@ Repeat the same core full-body workout twice weekly. This is intentional:
 
 The plan should fit approximately 45 minutes. The completion requirement is the core workout, not optional accessories.
 
-### 9.2 Five-minute warm-up
+### 9.2 Dynamic warm-up
 
-Display the following sequence at the start of each workout:
+After template selection and full-session preview, display a 6–8 minute dynamic sequence:
 
-1. Easy stationary bike — 2 minutes
+1. Easy bike or brisk walk — 3 minutes
 2. Bodyweight squat to a bench — 8 controlled repetitions
-3. Unweighted hip hinge — 8 repetitions
-4. Lateral band steps — 8 steps in each direction
-5. Incline push-ups against a bench — 8 repetitions
+3. Alternating step-back with an overhead reach — 5 each side
+4. Unweighted hip hinge with an arm sweep — 8 repetitions
+5. Wall slides — 8 controlled repetitions
+6. Incline push-ups against a bench — 8 repetitions
 
-The UI should say that a painful warm-up movement should be skipped or adjusted. Warm-up items do not require individual logging; one Start Main Workout action advances past the warm-up.
+The band template substitutes a brisk march, band pull-aparts, and a wall-or-bench push-up where appropriate. The UI should identify these as dynamic, workout-specific movements; say that a painful movement should be skipped or adjusted; and avoid long static holds. Warm-up items do not require individual logging. Before the first challenging lower- and upper-body work set, prompt for 1–2 lighter movement-specific practice sets that do not count toward prescribed work sets.
 
 ### 9.3 Core workout
 
@@ -314,6 +315,15 @@ Exercises 3A/3B and 4A/4B may be shown as suggested supersets to save time, but 
 
 The routine does not require a barbell or rack. Every exercise detail has a Substitute action so occupied equipment does not interrupt the workout.
 
+Two equivalent equipment variants preserve the same broad lower-body, push, and pull coverage:
+
+| Template | Exercises |
+|---|---|
+| Machine only | Leg press, seated leg curl, chest press, seated row, lat pulldown, hip abduction |
+| Resistance bands | Banded squat, band good morning, standing band chest press, anchored band row, kneeling band lat pulldown, lateral band walk |
+
+The band template must remind the user to inspect bands and use a secure anchor. Band resistance is recorded as an editable level rather than mislabeled as pounds.
+
 ### 9.4 Optional finishers
 
 Overhead press, triceps pushdown, calf work, core work, and additional back extensions may be stored as optional finishers. They do not appear by default in the core flow and never affect workout completion or adherence.
@@ -324,7 +334,7 @@ For each work set, log:
 
 - Exercise or selected substitute
 - Set number
-- Weight in pounds
+- Weight in pounds or band-resistance level, according to the exercise
 - Repetitions
 - Completion
 
@@ -364,6 +374,16 @@ Every recommendation is editable. Display it plainly:
 - Week 13: keep both gym sessions but reduce each prescribed exercise by one work set and avoid grinding repetitions.
 - Race week: one light Monday session at reduced volume and comfortable existing loads; no Thursday strength commitment.
 - After the race, the app should not invent a new program. Show a Plan Complete state and invite the user to intentionally create the next phase.
+
+### 9.8 Fitness-sound guardrails
+
+- Preserve the same major movement-pattern coverage across equipment variants and train it on both scheduled strength days.
+- Favor consistency, gradual progression, controlled repetitions, and non-failure work over novelty.
+- Treat exercise order as flexible; the first exercise receives the freshest effort, but occupied equipment must never block the session.
+- Use a dynamic, non-fatiguing general warm-up followed by lighter movement-specific practice sets.
+- This is general programming for a healthy adult, not individual medical assessment. Pain, dizziness, unusual shortness of breath, swelling, or movement changes warrant stopping and appropriate professional guidance.
+
+Evidence basis: [ACSM 2026 resistance-training summary](https://www.acsm.org/wp-content/uploads/2026/03/Resistance-Training-Position-Stand-infographic.pdf), [systematic review of elastic versus conventional resistance](https://pubmed.ncbi.nlm.nih.gov/30815258/), [systematic review of free-weight versus machine training](https://pubmed.ncbi.nlm.nih.gov/37582807/), and [systematic review of exercise order](https://pubmed.ncbi.nlm.nih.gov/32077380/).
 
 ## 10. Kitchen model
 
@@ -577,8 +597,11 @@ On a rest day, the primary card should say the next planned session and may elev
 
 - Keep the screen awake when supported.
 - Show elapsed time as optional context, never a completion requirement.
-- Warm-up card first.
+- Before starting the timer or log, show horizontally browsable cards for the default, machine-only, and band-only templates.
+- Show a complete exercise/set/rep preview after template selection and before the warm-up.
+- Warm-up follows the preview and remains reviewable.
 - Show one exercise group at a time with last performance and suggested load.
+- Show a directly tappable exercise map; Next, Back, and direct selection work even when the current exercise is incomplete.
 - Make set entry large and thumb-friendly.
 - Provide Substitute at exercise level.
 - Preserve partial work automatically.
@@ -646,6 +669,8 @@ Use stable UUIDs and explicit schema versions. Suggested entities follow; implem
 
 - `id`
 - `name`
+- `description`
+- `equipment`
 - `warmupSteps`
 - `exerciseDefinitions`
 - `active`
@@ -657,6 +682,7 @@ Use stable UUIDs and explicit schema versions. Suggested entities follow; implem
 - `id`
 - `name`
 - `movementPattern`
+- `loadUnit`: lb, band_level
 - `repMin`
 - `repMax`
 - `targetSets`
@@ -830,7 +856,9 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 
 ### Phase 3 — Active strength workout
 
+- Equipment-template selection and complete pre-workout preview
 - Warm-up sequence
+- Non-linear exercise map/navigation
 - Exercise/set logging
 - Draft persistence
 - Substitutions
@@ -889,6 +917,8 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 - End-of-week incomplete sessions become skipped and do not roll over.
 - A run can be completed by confirming/editing only actual distance.
 - The full warm-up is visible without requiring five separate checkoffs.
+- The user can select and preview the complete default, machine-only, or band-only workout before the timer starts.
+- The user can move to any exercise before completing the current one and return later.
 - A user can complete the prescribed strength workout, substitute any exercise, and log every set.
 - The next session receives a correct deterministic double-progression recommendation.
 - Race week does not expect a Thursday gym workout.
@@ -931,6 +961,7 @@ Automated tests should emphasize domain rules rather than component snapshots:
 - Exercise substitution history
 - Double-progression success, hold, and deload cases
 - Active-workout draft recovery
+- Template selection, per-exercise completion, taper set counts, and non-linear workout completion
 - Home-meal counting including leftovers
 - Meal-type inference, eligible weekdays, daily-slot deduplication, and effective-dated goals
 - Fresh-item batch parsing and seven-day Use Soon transition
@@ -943,7 +974,7 @@ Automated tests should emphasize domain rules rather than component snapshots:
 ## 22. Future considerations, not commitments
 
 - A new post-race strength/running phase
-- A/B strength templates after the repeated routine is established
+- Additional strength templates only after the three equipment variants show a real usage need
 - True receipt-image parsing using a secure serverless backend and separately billed API
 - Cloud synchronization if multi-device use becomes important
 - Web Push if server infrastructure is intentionally adopted

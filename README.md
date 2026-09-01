@@ -7,7 +7,7 @@ The complete product requirements and implementation handoff remain in [DESIGN.m
 ## Included
 
 - Exact 14-week running and strength plan, flexible within-week rescheduling, waiting/skipped states, and honest adherence denominators
-- One-field run completion and a persistent, substitution-aware strength-workout draft
+- One-field run completion plus default, machine-only, and resistance-band strength templates with full pre-workout preview, dynamic warm-up, free exercise ordering, and persistent drafts
 - Deterministic double progression based on completed set history
 - One-tap, time-aware Breakfast/Work Lunch/Dinner tracking alongside a batch-entry Fresh List, Use Soon actions, Saved Dishes, local matching, and manual ChatGPT prompt handoff
 - Weekly adherence, planned-versus-actual mileage, strength history, meal counts, weight trend, and optional waist entries

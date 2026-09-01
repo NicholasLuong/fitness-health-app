@@ -2,7 +2,7 @@ import { z } from 'zod'
 import type { BackupPayload } from '../domain/types'
 import { defaultMealGoals, SCHEMA_VERSION } from '../domain/seed'
 import { normalizedMealLog } from '../domain/meals'
-import { dataTables, type FitnessDatabase } from './db'
+import { dataTables, ensureSeeded, type FitnessDatabase } from './db'
 
 const nullableString = z.string().nullable()
 const planProgramSchema = z.object({
@@ -16,11 +16,12 @@ const planSessionSchema = z.object({
   completedAt: nullableString, actualDistanceMiles: z.number().nullable(), notes: nullableString
 })
 const templateSchema = z.object({
-  id: z.string(), name: z.string(), warmupSteps: z.array(z.string()), exerciseDefinitions: z.array(z.string()),
+  id: z.string(), name: z.string(), description: z.string().default('Full-body strength session'),
+  equipment: z.string().default('Gym equipment'), warmupSteps: z.array(z.string()), exerciseDefinitions: z.array(z.string()),
   active: z.boolean(), createdAt: z.string(), updatedAt: z.string()
 })
 const exerciseSchema = z.object({
-  id: z.string(), name: z.string(), movementPattern: z.string(), repMin: z.number(), repMax: z.number(),
+  id: z.string(), name: z.string(), movementPattern: z.string(), loadUnit: z.enum(['lb', 'band_level']).default('lb'), repMin: z.number(), repMax: z.number(),
   targetSets: z.number(), defaultIncrementLb: z.number(), substituteExerciseIds: z.array(z.string()), optional: z.boolean()
 })
 const workoutLogSchema = z.object({
@@ -122,6 +123,7 @@ export async function restoreBackup(database: FitnessDatabase, backup: BackupPay
     await database.measurements.bulkAdd(valid.data.measurements)
     await database.settings.bulkAdd(valid.data.settings)
   })
+  await ensureSeeded(database)
 }
 
 export function backupCounts(backup: BackupPayload): string {

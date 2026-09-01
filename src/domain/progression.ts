@@ -6,6 +6,11 @@ export interface LoadRecommendation {
   lastSummary: string | null
 }
 
+export function formatExerciseLoad(exercise: Exercise, value: number): string {
+  if (exercise.loadUnit === 'band_level') return `band level ${value}`
+  return `${value} lb`
+}
+
 export function recommendLoad(
   exercise: Exercise,
   workoutLogs: WorkoutLog[],
@@ -21,10 +26,10 @@ export function recommendLoad(
     return { log, sets }
   }).filter(({ sets }) => sets.length > 0)
 
-  if (!sessions.length) return { weightLb: 0, reason: 'start', lastSummary: null }
+  if (!sessions.length) return { weightLb: exercise.loadUnit === 'band_level' ? 1 : 0, reason: 'start', lastSummary: null }
   const last = sessions[0].sets
   const weight = last[0].weightLb
-  const lastSummary = `${last.length} × ${last.map((set) => set.reps).join('/')} at ${weight} lb`
+  const lastSummary = `${last.length} × ${last.map((set) => set.reps).join('/')} at ${formatExerciseLoad(exercise, weight)}`
   const allAtTop = last.length >= exercise.targetSets && last.every((set) => set.reps >= exercise.repMax)
   if (allAtTop) return { weightLb: weight + exercise.defaultIncrementLb, reason: 'progress', lastSummary }
 

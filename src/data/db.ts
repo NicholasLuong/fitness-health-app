@@ -1,5 +1,5 @@
 import Dexie, { type EntityTable } from 'dexie'
-import { defaultMealGoals, defaultSettings, exercises, program, workoutTemplate, createSeedSessions, SCHEMA_VERSION } from '../domain/seed'
+import { defaultMealGoals, defaultSettings, exercises, program, workoutTemplates, createSeedSessions, SCHEMA_VERSION } from '../domain/seed'
 import { inferredMealType, localMealDate } from '../domain/meals'
 import type {
   AppSettings, Dish, FreshItem, MealGoal, MealLog, Measurement, PlanProgram, PlanSession,
@@ -59,8 +59,8 @@ export async function ensureSeeded(database: FitnessDatabase = db): Promise<void
     if ((await database.planSessions.where('programId').equals(program.id).count()) === 0) {
       await database.planSessions.bulkAdd(createSeedSessions())
     }
-    if (!(await database.workoutTemplates.get(workoutTemplate.id))) await database.workoutTemplates.add(workoutTemplate)
-    if ((await database.exercises.count()) === 0) await database.exercises.bulkAdd(exercises)
+    await database.workoutTemplates.bulkPut(workoutTemplates)
+    await database.exercises.bulkPut(exercises)
     if ((await database.mealGoals.count()) === 0) await database.mealGoals.bulkAdd(defaultMealGoals)
     if (!(await database.settings.get('app'))) await database.settings.add(defaultSettings)
     else await database.settings.update('app', { schemaVersion: SCHEMA_VERSION })

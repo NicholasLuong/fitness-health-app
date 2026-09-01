@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { exercises } from './seed'
-import { recommendLoad } from './progression'
+import { formatExerciseLoad, recommendLoad } from './progression'
 import type { SetLog, WorkoutLog } from './types'
 
 const exercise = exercises.find((item) => item.id === 'db-bench')!
@@ -26,5 +26,11 @@ describe('double progression', () => {
     const substitute = exercises.find((item) => item.id === 'chest-press')!
     const history = sets('a', [12, 12, 12]).map((set) => ({ ...set, performedExerciseId: substitute.id }))
     expect(recommendLoad(exercise, [workout('a', 1)], history).reason).toBe('start')
+  })
+
+  it('starts and formats band resistance as a level', () => {
+    const band = exercises.find((item) => item.id === 'band-row')!
+    expect(recommendLoad(band, [], [])).toMatchObject({ weightLb: 1, reason: 'start' })
+    expect(formatExerciseLoad(band, 3)).toBe('band level 3')
   })
 })

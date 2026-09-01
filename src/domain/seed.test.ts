@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createSeedSessions } from './seed'
+import { createSeedSessions, exercises, workoutTemplates } from './seed'
 
 describe('approved training seed', () => {
   it('seeds all exact plan dates and distances', () => {
@@ -15,5 +15,11 @@ describe('approved training seed', () => {
     const sessions = createSeedSessions()
     expect(sessions.filter((session) => session.originalDate >= '2026-11-30' && session.originalDate <= '2026-12-06' && session.type === 'strength')).toHaveLength(2)
     expect(sessions.filter((session) => session.originalDate >= '2026-12-07' && session.type === 'strength').map((session) => session.originalDate)).toEqual(['2026-12-07'])
+  })
+
+  it('offers balanced default, machine, and band workout templates', () => {
+    expect(workoutTemplates.map((template) => template.name)).toEqual(['Everyday full body', 'Machine only', 'Resistance bands'])
+    expect(workoutTemplates.every((template) => template.exerciseDefinitions.length === 6)).toBe(true)
+    expect(exercises.find((exercise) => exercise.id === 'band-row')?.loadUnit).toBe('band_level')
   })
 })

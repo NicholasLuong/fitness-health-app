@@ -3,7 +3,9 @@ import type { AppSettings, Exercise, MealGoal, PlanProgram, PlanSession, Workout
 
 export const PROGRAM_ID = 'program-half-2026'
 export const TEMPLATE_ID = 'template-full-body'
-export const SCHEMA_VERSION = 2
+export const MACHINE_TEMPLATE_ID = 'template-machine-only'
+export const BAND_TEMPLATE_ID = 'template-band-only'
+export const SCHEMA_VERSION = 3
 
 const stamp = '2026-09-01T00:00:00.000Z'
 
@@ -35,46 +37,93 @@ export const program: PlanProgram = {
   updatedAt: stamp
 }
 
-export const exercises: Exercise[] = [
-  ['leg-press', 'Leg press', 'squat', 8, 12, 3, 10, ['goblet-squat']],
-  ['goblet-squat', 'Goblet squat to a bench', 'squat', 8, 12, 3, 5, ['leg-press']],
-  ['db-rdl', 'Dumbbell Romanian deadlift', 'hinge', 8, 12, 3, 5, ['back-extension']],
-  ['back-extension', '45-degree back extension', 'hinge', 8, 12, 3, 5, ['db-rdl']],
-  ['db-bench', 'Dumbbell bench press', 'push', 8, 12, 3, 5, ['chest-press']],
-  ['chest-press', 'Chest-press machine', 'push', 8, 12, 3, 5, ['db-bench']],
-  ['cable-row', 'Seated cable row', 'pull', 8, 12, 3, 5, ['chest-supported-row']],
-  ['chest-supported-row', 'Chest-supported dumbbell row', 'pull', 8, 12, 3, 5, ['cable-row']],
-  ['lat-pulldown', 'Lat pulldown', 'vertical pull', 8, 12, 2, 5, ['assisted-pullup']],
-  ['assisted-pullup', 'Assisted pull-up', 'vertical pull', 8, 12, 2, 5, ['lat-pulldown']],
-  ['hip-abduction', 'Hip-abduction machine', 'abduction', 12, 20, 2, 5, ['lateral-band-walk']],
-  ['lateral-band-walk', 'Lateral band walks', 'abduction', 12, 20, 2, 0, ['hip-abduction']]
-].map(([id, name, movementPattern, repMin, repMax, targetSets, defaultIncrementLb, substituteExerciseIds]) => ({
-  id: id as string,
-  name: name as string,
-  movementPattern: movementPattern as string,
-  repMin: repMin as number,
-  repMax: repMax as number,
-  targetSets: targetSets as number,
-  defaultIncrementLb: defaultIncrementLb as number,
-  substituteExerciseIds: substituteExerciseIds as string[],
-  optional: false
-}))
+const strengthExercise = (
+  id: string,
+  name: string,
+  movementPattern: string,
+  repMin: number,
+  repMax: number,
+  targetSets: number,
+  defaultIncrementLb: number,
+  substituteExerciseIds: string[],
+  loadUnit: Exercise['loadUnit'] = 'lb'
+): Exercise => ({ id, name, movementPattern, loadUnit, repMin, repMax, targetSets, defaultIncrementLb, substituteExerciseIds, optional: false })
 
-export const workoutTemplate: WorkoutTemplate = {
-  id: TEMPLATE_ID,
-  name: 'Full Body',
-  warmupSteps: [
-    'Easy stationary bike — 2 minutes',
-    'Bodyweight squat to a bench — 8 controlled reps',
-    'Unweighted hip hinge — 8 reps',
-    'Lateral band steps — 8 each direction',
-    'Incline push-ups against a bench — 8 reps'
-  ],
-  exerciseDefinitions: ['leg-press', 'db-rdl', 'db-bench', 'cable-row', 'lat-pulldown', 'hip-abduction'],
-  active: true,
-  createdAt: stamp,
-  updatedAt: stamp
-}
+export const exercises: Exercise[] = [
+  strengthExercise('leg-press', 'Leg press', 'squat', 8, 12, 3, 10, ['goblet-squat', 'band-squat']),
+  strengthExercise('goblet-squat', 'Goblet squat to a bench', 'squat', 8, 12, 3, 5, ['leg-press', 'band-squat']),
+  strengthExercise('band-squat', 'Banded squat to a bench', 'squat', 10, 15, 3, 1, ['leg-press', 'goblet-squat'], 'band_level'),
+  strengthExercise('db-rdl', 'Dumbbell Romanian deadlift', 'hinge', 8, 12, 3, 5, ['back-extension', 'leg-curl-machine', 'band-good-morning']),
+  strengthExercise('back-extension', '45-degree back extension', 'hinge', 8, 12, 3, 5, ['db-rdl', 'leg-curl-machine', 'band-good-morning']),
+  strengthExercise('leg-curl-machine', 'Seated leg-curl machine', 'knee flexion', 10, 15, 3, 5, ['db-rdl', 'band-good-morning']),
+  strengthExercise('band-good-morning', 'Banded good morning', 'hinge', 10, 15, 3, 1, ['db-rdl', 'leg-curl-machine'], 'band_level'),
+  strengthExercise('db-bench', 'Dumbbell bench press', 'push', 8, 12, 3, 5, ['chest-press', 'band-chest-press']),
+  strengthExercise('chest-press', 'Chest-press machine', 'push', 8, 12, 3, 5, ['db-bench', 'band-chest-press']),
+  strengthExercise('band-chest-press', 'Standing band chest press', 'push', 10, 15, 3, 1, ['db-bench', 'chest-press'], 'band_level'),
+  strengthExercise('cable-row', 'Seated cable row', 'pull', 8, 12, 3, 5, ['chest-supported-row', 'seated-row-machine', 'band-row']),
+  strengthExercise('chest-supported-row', 'Chest-supported dumbbell row', 'pull', 8, 12, 3, 5, ['cable-row', 'seated-row-machine', 'band-row']),
+  strengthExercise('seated-row-machine', 'Seated row machine', 'pull', 8, 12, 3, 5, ['cable-row', 'band-row']),
+  strengthExercise('band-row', 'Anchored band row', 'pull', 10, 15, 3, 1, ['cable-row', 'seated-row-machine'], 'band_level'),
+  strengthExercise('lat-pulldown', 'Lat pulldown', 'vertical pull', 8, 12, 2, 5, ['assisted-pullup', 'band-lat-pulldown']),
+  strengthExercise('assisted-pullup', 'Assisted pull-up', 'vertical pull', 8, 12, 2, 5, ['lat-pulldown', 'band-lat-pulldown']),
+  strengthExercise('band-lat-pulldown', 'Kneeling band lat pulldown', 'vertical pull', 10, 15, 2, 1, ['lat-pulldown', 'assisted-pullup'], 'band_level'),
+  strengthExercise('hip-abduction', 'Hip-abduction machine', 'abduction', 12, 20, 2, 5, ['lateral-band-walk']),
+  strengthExercise('lateral-band-walk', 'Lateral band walks', 'abduction', 12, 20, 2, 1, ['hip-abduction'], 'band_level')
+]
+
+const dynamicWarmup = [
+  'Easy bike or brisk walk — 3 minutes',
+  'Bodyweight squat to a bench — 8 controlled reps',
+  'Alternating step-back with an overhead reach — 5 each side',
+  'Unweighted hip hinge with an arm sweep — 8 reps',
+  'Wall slides — 8 controlled reps',
+  'Incline push-ups against a bench — 8 reps'
+]
+
+export const workoutTemplates: WorkoutTemplate[] = [
+  {
+    id: TEMPLATE_ID,
+    name: 'Everyday full body',
+    description: 'The default balance of dumbbells, cables, and machines.',
+    equipment: 'Gym mix',
+    warmupSteps: dynamicWarmup,
+    exerciseDefinitions: ['leg-press', 'db-rdl', 'db-bench', 'cable-row', 'lat-pulldown', 'hip-abduction'],
+    active: true,
+    createdAt: stamp,
+    updatedAt: stamp
+  },
+  {
+    id: MACHINE_TEMPLATE_ID,
+    name: 'Machine only',
+    description: 'Stable stations and pin-loaded resistance; no free weights required.',
+    equipment: 'Machines',
+    warmupSteps: dynamicWarmup,
+    exerciseDefinitions: ['leg-press', 'leg-curl-machine', 'chest-press', 'seated-row-machine', 'lat-pulldown', 'hip-abduction'],
+    active: true,
+    createdAt: stamp,
+    updatedAt: stamp
+  },
+  {
+    id: BAND_TEMPLATE_ID,
+    name: 'Resistance bands',
+    description: 'A complete portable session using anchored and loop bands.',
+    equipment: 'Long band + mini band',
+    warmupSteps: [
+      'Brisk march or walk — 3 minutes',
+      'Bodyweight squat to a bench — 8 controlled reps',
+      'Alternating step-back with an overhead reach — 5 each side',
+      'Unweighted hip hinge with an arm sweep — 8 reps',
+      'Band pull-aparts — 10 controlled reps',
+      'Incline push-ups against a wall or bench — 8 reps'
+    ],
+    exerciseDefinitions: ['band-squat', 'band-good-morning', 'band-chest-press', 'band-row', 'band-lat-pulldown', 'lateral-band-walk'],
+    active: true,
+    createdAt: stamp,
+    updatedAt: stamp
+  }
+]
+
+export const workoutTemplate = workoutTemplates[0]
 
 const weeklyRuns = [
   [3, 5], [3, 6], [3, 7], [3, 5], [3.5, 8], [3.5, 9], [3, 6],

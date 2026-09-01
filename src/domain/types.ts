@@ -33,6 +33,7 @@ export interface Exercise {
   id: string
   name: string
   movementPattern: string
+  loadUnit: 'lb' | 'band_level'
   repMin: number
   repMax: number
   targetSets: number
@@ -44,6 +45,8 @@ export interface Exercise {
 export interface WorkoutTemplate {
   id: string
   name: string
+  description: string
+  equipment: string
   warmupSteps: string[]
   exerciseDefinitions: string[]
   active: boolean
