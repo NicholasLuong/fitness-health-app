@@ -560,6 +560,8 @@ Priority order:
 5. Kitchen suggestion/use-soon item
 6. Quick actions
 
+Run and grocery quick-action sheets may autofocus their single input, but must track the visual viewport so the title, field, and primary action remain visible above the iOS keyboard without manual page scrolling.
+
 Example:
 
 ```text
