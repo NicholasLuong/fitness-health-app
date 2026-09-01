@@ -377,7 +377,15 @@ A home-prepared meal is anything eaten from food prepared or assembled at home i
 - Simple assembled meals
 - Leftovers
 
-The app counts meals, not days. The initial weekly goal is configurable during onboarding, with a suggested default of five meals because the user’s baseline fluctuates too much to infer automatically.
+The app counts home-prepared meals against a small set of configurable weekly meal commitments. The initial personal defaults are:
+
+- Breakfast: 7 of 7 daily slots
+- Work lunch: all five Monday–Friday slots
+- Dinner: any 5 of 7 daily slots
+
+Only one meal can satisfy a given daily slot. Additional home-prepared meals remain in total history but do not inflate slot adherence. A meal-prepped or leftover meal counts because the desired behavior is eating food prepared at home, not cooking from scratch for every sitting.
+
+Meal-goal versions are effective-dated by week so future changes do not rewrite historical adherence. Missed slots do not roll into the next week.
 
 ### 10.2 Meal logging
 
@@ -386,13 +394,16 @@ Primary quick action: Log Home Meal.
 Flow:
 
 1. Default timestamp is now.
-2. Optionally select a saved dish.
-3. Optionally mark as leftovers.
-4. Save.
+2. Infer Breakfast, Work Lunch, Dinner, or Other from the time and weekday; allow a quick correction.
+3. Optionally select a saved dish.
+4. Optionally mark as leftovers.
+5. Save.
 
-Only the timestamp is required. A home meal logged from Today should take one or two taps. Eating-out entries may be supported as an optional secondary type for context, but are not required and should not add friction to the primary flow.
+Only the inferred meal slot is required. Today provides a one-tap time-aware action such as Log Breakfast or Log Dinner. Kitchen opens the same preselected action and saves in a second tap. Duplicate taps for an already-counted daily slot should not create another adherence credit. Eating-out entries may be supported as an optional secondary type for context, but are not required and should not add friction to the primary flow.
 
 Logging a saved dish updates its times-cooked and last-cooked date. It does not automatically subtract groceries.
+
+The two Kitchen mandates—meeting home-prepared meal commitments and using fresh groceries—must receive equal top-level prominence. Meal tracking must not bury Add Fresh Groceries, Use Soon, or Cook It, and Fresh List maintenance must not add steps to ordinary meal logging.
 
 ### 10.3 Fresh List, not pantry inventory
 
@@ -541,7 +552,7 @@ Suggested first exercise: Leg press
 THIS WEEK
 Runs       0 / 2
 Strength   1 / 2
-Home meals 3 / 5
+Meal goals  9 / 17
 
 COMING UP
 Sat · Long run · 6 miles
@@ -678,12 +689,27 @@ Use stable UUIDs and explicit schema versions. Suggested entities follow; implem
 
 - `id`
 - `occurredAt`
+- `mealDate`: local calendar date used for daily-slot credit
+- `mealType`: breakfast, work_lunch, dinner, other
 - `type`: home_prepared, ate_out
 - `dishId`, nullable
 - `leftovers`
 - `notes`, nullable
 
-### 13.8 `dishes`
+### 13.8 `mealGoals`
+
+- `id`
+- `mealType`: breakfast, work_lunch, dinner
+- `label`
+- `targetPerWeek`
+- `eligibleWeekdays`
+- `effectiveFrom`
+- `effectiveUntil`, nullable
+- `enabled`
+- `createdAt`
+- `updatedAt`
+
+### 13.9 `dishes`
 
 - `id`
 - `name`
@@ -697,7 +723,7 @@ Use stable UUIDs and explicit schema versions. Suggested entities follow; implem
 
 Times cooked and last cooked should preferably be derived from `mealLogs` to avoid inconsistency.
 
-### 13.9 `freshItems`
+### 13.10 `freshItems`
 
 - `id`
 - `name`
@@ -708,7 +734,7 @@ Times cooked and last cooked should preferably be derived from `mealLogs` to avo
 - `removedAt`, nullable
 - `notes`, nullable
 
-### 13.10 `measurements`
+### 13.11 `measurements`
 
 - `id`
 - `type`: weight, waist
@@ -717,12 +743,12 @@ Times cooked and last cooked should preferably be derived from `mealLogs` to avo
 - `measuredAt`
 - `notes`, nullable
 
-### 13.11 `settings`
+### 13.12 `settings`
 
 - `weekStartsOn`: Monday
 - `distanceUnit`: miles
 - `weightUnit`: pounds
-- `homeMealWeeklyGoal`: default 5
+- `homeMealWeeklyGoal`: derived compatibility summary of enabled meal commitments
 - `freshItemAttentionDays`: default 7
 - `calendarRemindersEnabled`: default false
 - `schemaVersion`
@@ -813,7 +839,9 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 
 ### Phase 4 — Kitchen
 
-- One-tap home-meal logging
+- One-tap time-aware home-meal logging
+- Configurable Breakfast, Work Lunch, and Dinner commitments
+- Daily-slot deduplication and weekly progress
 - Batch Fresh List entry
 - Use Soon logic
 - Saved Dishes
@@ -869,6 +897,12 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 
 - A home-prepared meal can be logged in no more than two taps when no dish is selected.
 - Leftovers count as home-prepared meals.
+- Breakfast, Work Lunch, and Dinner commitments can be configured independently.
+- Today infers a useful meal type and logs it in one tap.
+- At most one adherence credit is awarded per configured daily meal slot.
+- Work-lunch credits respect configured Monday–Friday eligibility.
+- Changing a meal target does not rewrite prior-week denominators.
+- Meal commitments and the Fresh List are both visible as top-level Kitchen actions.
 - Multiple Fresh List items can be entered in one text/dictation field.
 - Fresh items become Use Soon after the configured interval.
 - The user can keep, cook with, or remove a Use Soon item.
@@ -882,7 +916,7 @@ Do not ask for weight, waist, injuries, calorie goals, current lifts, notificati
 - Weekly fitness adherence uses that week’s actual planned commitments.
 - Running shows planned and actual distance without pace.
 - Strength history shows exercise loads and reps.
-- Home-prepared meals are counted by week.
+- Home-prepared meal commitments are counted by category and week.
 - Weekly weight can be logged without a target weight or body-fat estimate.
 
 ## 21. Testing priorities
@@ -898,6 +932,7 @@ Automated tests should emphasize domain rules rather than component snapshots:
 - Double-progression success, hold, and deload cases
 - Active-workout draft recovery
 - Home-meal counting including leftovers
+- Meal-type inference, eligible weekdays, daily-slot deduplication, and effective-dated goals
 - Fresh-item batch parsing and seven-day Use Soon transition
 - Dish ingredient normalization/matching
 - Prompt generation with full lists and safe handling of empty lists
